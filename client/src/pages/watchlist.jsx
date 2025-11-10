@@ -1,4 +1,8 @@
 import { Link } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import {  getWatchList } from "../store/actions/watchList";
+import { useEffect } from "react";
+import Loader from "../components/loader";
 
 const MyWatchlist = () => {
   const watchlistData = [
@@ -24,6 +28,28 @@ const MyWatchlist = () => {
     }
   ];
 
+  const dispatch = useDispatch();
+  const {watchList} = useSelector(state => state.watchList);
+  const {user} = useSelector(state => state.auth);
+  console.log(user._id);
+   const { isloading } = useSelector((state) => state.stocks);
+  console.log(isloading)
+
+  console.log("watchlist:", watchList);
+
+
+  useEffect(()=>{
+    dispatch(getWatchList(user._id));
+  }, [])
+
+
+  
+    if(isloading){
+      return <Loader/>
+    }
+
+
+
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
       
@@ -34,7 +60,7 @@ const MyWatchlist = () => {
 
   
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {watchlistData.map((stock) => (
+        {watchList?.data?.map((stock) => (
           <Link 
             to={`/stockDetails/${stock.symbol}`}
             key={stock.symbol} 

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,11 +13,8 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
 import { getOrUpdatedStocksHistoryData } from '../store/actions/stocksAction';
 import Loader from '../components/loader';
-
 
 ChartJS.register(
   CategoryScale,
@@ -28,23 +27,27 @@ ChartJS.register(
   Filler
 );
 
-const StockDetail = () => {
-  const navigate = useNavigate()
+const SearchStock = () => {
+     const { isloading } = useSelector((state) => state.stocks);
+     console.log("isload:", isloading
+     )
   const dispatch = useDispatch();
-  const { stocksHistoryData, isloading } = useSelector(state => state.stocks);
-  const { symbol } = useParams();
+  const navigate = useNavigate();
+ const { symbol } = useParams();
+  const { stocksHistoryData } = useSelector(state => state.stocks);
+  console.log("stockkk:",stocksHistoryData)
+  
   const [timeRange, setTimeRange] = useState('daily');
   const [currentPrice, setCurrentPrice] = useState(0);
   const [priceChange, setPriceChange] = useState(0);
   const [priceChangePercent, setPriceChangePercent] = useState(0);
-  const [error, setError] = useState("");
-    const [hasData, setHasData] = useState(false);
-  console.log("error:",error)
 
-  console.log("stocks:", stocksHistoryData);
-  console.log("symbol:", symbol);
+  const [error, setError] = useState('');
 
-  
+
+  // Popular symbols for quick search
+  const popularSymbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX'];
+
   const generateChartData = (range) => {
     if (!stocksHistoryData || !stocksHistoryData.data || !stocksHistoryData.data[range] || !stocksHistoryData.data[range].data) {
       return {
@@ -55,7 +58,6 @@ const StockDetail = () => {
 
     const rangeData = stocksHistoryData.data[range].data;
     
-  
     let labels = [];
     let data = [];
 
@@ -121,6 +123,42 @@ const StockDetail = () => {
     }
   }, [stocksHistoryData, timeRange]);
 
+ 
+  useEffect(() => {
+    if (symbol) {
+      dispatch(getOrUpdatedStocksHistoryData(symbol))
+      .unwrap()
+      .then((res)=>{
+        console.log("res:", res)
+        setError('')
+      })
+      .catch((error)=>{
+         setError('Stock symbol not found. Please check the symbol and try again.');
+        window.alert(`Stock symbol not found. ${error}`)
+       
+      })
+    }
+  }, [symbol]);
+
+  const fetchStockData = async (stockSymbol) => {
+    
+    setError('');
+    
+    try {
+      const result = await dispatch(getOrUpdatedStocksHistoryData(stockSymbol));
+      if (result?.error || (result?.payload?.success === false)) {
+        
+      }
+    } catch (err) {
+      setError('Failed to fetch stock data. Please try again.');
+    } 
+    
+  };
+
+  const handlePopularSymbolClick = (popularSymbol) => {
+    navigate(`/searchStock/${popularSymbol}`);
+  };
+
   const chartDataConfig = generateChartData(timeRange);
 
   const chartData = {
@@ -153,7 +191,11 @@ const StockDetail = () => {
       tooltip: {
         mode: 'index',
         intersect: false,
-       
+        callbacks: {
+          label: function(context) {
+            return `$${context.parsed.y.toFixed(2)}`;
+          }
+        }
       },
     },
     scales: {
@@ -167,12 +209,16 @@ const StockDetail = () => {
           color: 'rgba(0, 0, 0, 0.1)',
         },
         beginAtZero: false,
-       
+        ticks: {
+          callback: function(value) {
+            return '$' + value.toFixed(2);
+          }
+        }
       },
     },
   };
 
- 
+  
   const calculateVolume = () => {
     if (!stocksHistoryData || !stocksHistoryData.data || !stocksHistoryData.data[timeRange] || !stocksHistoryData.data[timeRange].data) {
       return '0';
@@ -189,61 +235,73 @@ const StockDetail = () => {
     return totalVolume.toString();
   };
 
-  useEffect(() => {
-    setError("")
-    setHasData(false);
-    dispatch(getOrUpdatedStocksHistoryData(symbol))
-    .unwrap()
-    .then(()=>{
-      console.log("success")
-    })
-    .catch((error)=>{
-      // window.alert(error)
-      setError(error)
-      setHasData(true)
 
-    })
-  }, [dispatch, symbol]);
-
-
-
- 
-
- 
-  
   if (isloading) {
     return <Loader/>
   }
 
-
-  if(error != ""){
+  // Show error state when no symbol is searched or symbol not found
+  if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-         
+            {error ? (
+              <>
                 <div className="text-red-600 mb-4">
                   <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
-              
+                <h3 className="text-2xl font-bold text-red-800 mb-4">No Stock Found</h3>
                 <p className="text-red-600 text-lg mb-6">{error}</p>
+              </>
+            ) : (
+              <>
+                <div className="text-blue-600 mb-4">
+                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Search for Stocks</h3>
+                <p className="text-gray-600 text-lg mb-6">
+                  Use the search bar in the header to find stock information
+                </p>
+              </>
+            )}
+
+            {/* Popular Symbols */}
+            <div className="mt-8">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Try these popular stocks:</h4>
+              <div className="flex flex-wrap justify-center gap-3">
+                {popularSymbols.map(popularSymbol => (
+                  <button
+                    key={popularSymbol}
+                    onClick={() => handlePopularSymbolClick(popularSymbol)}
+                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium"
+                  >
+                    {popularSymbol}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </main>
       </div>
-    )
+    );
   }
 
+  // Show stock data when available
   return (
-    <div className="">
+    <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stock Data Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="mb-4 lg:mb-0">
               <div className="flex items-center space-x-4 mb-2">
-                <h2 className="text-3xl font-bold text-gray-900">{stocksHistoryData?.data?.symbol}</h2>
+                <h2 className="text-3xl font-bold text-gray-900">{symbol}</h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                   priceChange >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
@@ -264,7 +322,7 @@ const StockDetail = () => {
               </div>
               <div>
                 <p className="text-lg font-semibold text-gray-900">
-                  {stocksHistoryData?.data?.daily?.data?.length || 0} points
+                  {stocksHistoryData.data?.daily?.data?.length || 0} points
                 </p>
                 <p className="text-sm text-gray-500">Data Points</p>
               </div>
@@ -281,10 +339,11 @@ const StockDetail = () => {
           </div>
         </div>
 
+        {/* Chart Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-2 sm:mb-0">
-              {stocksHistoryData?.data?.symbol} Price Chart
+              {symbol} Price Chart
             </h3>
             
             <div className="flex space-x-2">
@@ -325,7 +384,7 @@ const StockDetail = () => {
           </div>
         </div>
 
-       
+        {/* Additional Data Summary */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Daily Summary</h4>
@@ -383,4 +442,4 @@ const StockDetail = () => {
   );
 };
 
-export default StockDetail;
+export default SearchStock;
