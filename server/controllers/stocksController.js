@@ -4,13 +4,21 @@ const StocksHistory = require("../models/stocksHistory");
 
 const getStocksData = async (req, res) => {
   try {
-    const symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"];
 
-    // Get symbol from query params (or default to IBM)
+   const symbols = [
+  { symbol: "AAPL", name: "Apple Inc." },
+  { symbol: "MSFT", name: "Microsoft Corporation" },
+  { symbol: "GOOGL", name: "Alphabet Inc. (Google)" },
+  { symbol: "AMZN", name: "Amazon.com Inc." },
+  { symbol: "TSLA", name: "Tesla Inc." }
+];
+
+
+   
     // const symbol = req.query.symbol || 'IBM';
     const stockData = [];
-    for (let symbol of symbols.slice(0, 1)) {
-      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=1min&apikey=${process.env.API_SECRET}`;
+    for (let sym of symbols.slice(0, 1)) {
+      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${sym.symbol}&interval=1min&apikey=${process.env.API_SECRET}`;
 
       const response = await fetch(url);
 
@@ -35,7 +43,8 @@ const getStocksData = async (req, res) => {
       });
 
       const stock = {
-        symbol: symbol,
+        symbol: sym.symbol,
+        name: sym.name,
         open: parseFloat(latestData["1. open"]),
         high: parseFloat(latestData["2. high"]),
         low: parseFloat(latestData["3. low"]),
@@ -104,7 +113,13 @@ const getOrUpdateStockHistoryData = async (req, res) => {
     if (!stocks.weekly ||  !stocks.weekly.data ||
       stocks.weekly.data.length === 0 || now - new Date(stocks.weekly.lastUpdated) > 7 * 24 * 60 * 60 * 1000) {
       const newWeeklyData = await fetchWeekly(symbol);
-      if (newWeeklyData.success)
+      if (!newWeeklyData.success) {
+        return res.status(429).json({
+          success: false,
+          message: newWeeklyData.message || "API rate limit reached.",
+        });
+      }
+     
         stocks.weekly = { lastUpdated: now, data: newWeeklyData.data };
     }
 
@@ -112,9 +127,15 @@ const getOrUpdateStockHistoryData = async (req, res) => {
     if (!stocks.monthly ||  !stocks.monthly.data ||
       stocks.monthly.data.length === 0 || now - new Date(stocks.monthly.lastUpdated) > 30 * 24 * 60 * 60 * 1000) {
       const newMonthlyData = await fetchMonthly(symbol);
-      if (newMonthlyData.success)
-        stocks.monthly = { lastUpdated: now, data: newMonthlyData.data };
-    }
+      if (!newMonthlyData.success) {
+        return res.status(429).json({
+          success: false,
+          message: newMonthlyData.message || "API rate limit reached.",
+        });
+      }
+     
+      stocks.monthly = { lastUpdated: now, data: newMonthlyData.data };
+      }
 
     await stocks.save();
 

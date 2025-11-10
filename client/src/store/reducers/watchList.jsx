@@ -13,14 +13,14 @@ const watchListSlice = createSlice({
     reducers:{},
     extraReducers: (builder)=>{
         builder
-            .addCase(addWatchList.pending, (state)=>{
+            .addCase(getWatchList.pending, (state)=>{
                 state.isloading = false
             })
-            .addCase(addWatchList.fulfilled, (state, action)=>{
+            .addCase(getWatchList.fulfilled, (state, action)=>{
                 state.isloading=false,
                 state.watchList = action.payload.data
             })
-            .addCase(addWatchList.rejected, (state)=>{
+            .addCase(getWatchList.rejected, (state)=>{
                 state.isloading=false
             })
     }
