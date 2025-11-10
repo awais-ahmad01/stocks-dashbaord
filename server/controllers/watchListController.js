@@ -8,7 +8,7 @@ const addWatchList = async(req, res)=>{
 
         const exists = await WatchList.findOne({userId, symbol, name });
         if (exists) {
-        return res.status(409).json({ success: false, message: "Already in watchlist" });
+            return res.status(409).json({ success: false, message: "Already in watchlist" });
         }
 
         const newWatchList = new WatchList({

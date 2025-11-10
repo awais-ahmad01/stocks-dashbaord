@@ -5,7 +5,7 @@ const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 export const addWatchList = createAsyncThunk(
     "watchList/addWatchList",
-    async ({userId,symbol,name})=>{
+    async ({userId,symbol,name}, {rejectWithValue})=>{
         try{
             console.log("dispatching...")
 
@@ -14,12 +14,16 @@ export const addWatchList = createAsyncThunk(
             const response = await axios.post(`${baseURL}/api/add-watch-list`, {userId,symbol,name});
 
             console.log("response:", response);
+            if(!response.data.success){
+                return rejectWithValue(response.data.message)
+            }
 
             return true
             
         }
         catch(error){
             console.log("Error:", error);
+            return rejectWithValue(error?.response?.data?.message || "Failed to add watchlist")
         }
     }
 )

@@ -11,7 +11,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getOrUpdatedStocksHistoryData } from '../store/actions/stocksAction';
 import Loader from '../components/loader';
@@ -29,13 +29,17 @@ ChartJS.register(
 );
 
 const StockDetail = () => {
+  const navigate = useNavigate()
   const dispatch = useDispatch();
-  const { stocksHistoryData } = useSelector(state => state.stocks);
+  const { stocksHistoryData, isloading } = useSelector(state => state.stocks);
   const { symbol } = useParams();
   const [timeRange, setTimeRange] = useState('daily');
   const [currentPrice, setCurrentPrice] = useState(0);
   const [priceChange, setPriceChange] = useState(0);
   const [priceChangePercent, setPriceChangePercent] = useState(0);
+  const [error, setError] = useState("");
+    const [hasData, setHasData] = useState(false);
+  console.log("error:",error)
 
   console.log("stocks:", stocksHistoryData);
   console.log("symbol:", symbol);
@@ -186,12 +190,50 @@ const StockDetail = () => {
   };
 
   useEffect(() => {
-    dispatch(getOrUpdatedStocksHistoryData(symbol));
+    setError("")
+    setHasData(false);
+    dispatch(getOrUpdatedStocksHistoryData(symbol))
+    .unwrap()
+    .then(()=>{
+      console.log("success")
+    })
+    .catch((error)=>{
+      // window.alert(error)
+      setError(error)
+      setHasData(true)
+
+    })
   }, [dispatch, symbol]);
 
+
+
+ 
+
+ 
   
-  if (!stocksHistoryData || !stocksHistoryData.data) {
+  if (isloading) {
     return <Loader/>
+  }
+
+
+  if(error != ""){
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+         
+                <div className="text-red-600 mb-4">
+                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+              
+                <p className="text-red-600 text-lg mb-6">{error}</p>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -201,7 +243,7 @@ const StockDetail = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="mb-4 lg:mb-0">
               <div className="flex items-center space-x-4 mb-2">
-                <h2 className="text-3xl font-bold text-gray-900">{symbol}</h2>
+                <h2 className="text-3xl font-bold text-gray-900">{stocksHistoryData?.data?.symbol}</h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                   priceChange >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
@@ -222,7 +264,7 @@ const StockDetail = () => {
               </div>
               <div>
                 <p className="text-lg font-semibold text-gray-900">
-                  {stocksHistoryData.data?.daily?.data?.length || 0} points
+                  {stocksHistoryData?.data?.daily?.data?.length || 0} points
                 </p>
                 <p className="text-sm text-gray-500">Data Points</p>
               </div>
@@ -242,7 +284,7 @@ const StockDetail = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-2 sm:mb-0">
-              {symbol} Price Chart
+              {stocksHistoryData?.data?.symbol} Price Chart
             </h3>
             
             <div className="flex space-x-2">

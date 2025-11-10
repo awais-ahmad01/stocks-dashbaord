@@ -26,7 +26,7 @@ const stocksSlice = createSlice({
             })
 
              .addCase(getOrUpdatedStocksHistoryData.pending, (state)=>{
-                state.isloading = false
+                state.isloading = true
             })
             .addCase(getOrUpdatedStocksHistoryData.fulfilled, (state, action)=>{
                 state.isloading=false,
